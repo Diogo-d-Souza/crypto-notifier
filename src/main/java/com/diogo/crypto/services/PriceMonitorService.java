@@ -1,13 +1,12 @@
 package com.diogo.crypto.services;
 
-import com.diogo.crypto.entities.dto.PriceUpdateMessage;
 import com.diogo.crypto.entities.models.CryptoPrice;
 import com.diogo.crypto.services.binance.BinanceApiService;
+import com.diogo.crypto.services.redis.RedisMessagePublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
-import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -17,12 +16,12 @@ import java.util.List;
 public class PriceMonitorService {
     private BinanceApiService binanceApiService;
     private MongoTemplate mongoTemplate;
-    private SimpMessagingTemplate messagingTemplate;
+    private RedisMessagePublisher redisMessagePublisher;
 
-    public PriceMonitorService(BinanceApiService binanceApiService, MongoTemplate mongoTemplate, SimpMessagingTemplate messagingTemplate) {
+    public PriceMonitorService(BinanceApiService binanceApiService, MongoTemplate mongoTemplate, RedisMessagePublisher redisMessagePublisher) {
         this.binanceApiService = binanceApiService;
         this.mongoTemplate = mongoTemplate;
-        this.messagingTemplate = messagingTemplate;
+        this.redisMessagePublisher = redisMessagePublisher;
     }
 
     public void checkPrice(String symbol) {
@@ -32,8 +31,7 @@ public class PriceMonitorService {
 
         if (lastStoredPrice > 0 && currentCryptoCoinPrice >= lastStoredPrice * 1.01) {
             String message = cryptoCoin + " price increased by 1%! New price: $" + currentCryptoCoinPrice;
-            PriceUpdateMessage priceUpdateMessage = new PriceUpdateMessage(cryptoCoin, message, currentCryptoCoinPrice);
-            messagingTemplate.convertAndSend("/topic/updates", priceUpdateMessage);
+            redisMessagePublisher.publish(message);
         }
 
         storePrice(symbol, currentCryptoCoinPrice);
