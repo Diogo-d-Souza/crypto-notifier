@@ -4,6 +4,8 @@ import com.diogo.crypto.entities.models.CryptoPrice;
 import com.diogo.crypto.services.binance.BinanceApiService;
 import com.diogo.crypto.services.redis.RedisMessagePublisher;
 import com.diogo.crypto.services.redis.RedisService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.mongodb.core.MongoTemplate;
 import org.springframework.data.mongodb.core.query.Criteria;
@@ -15,6 +17,7 @@ import java.time.Instant;
 @Service
 public class PriceMonitorService {
 
+    private static final Logger logger = LoggerFactory.getLogger(PriceMonitorService.class);
     private BinanceApiService binanceApiService;
     private MongoTemplate mongoTemplate;
     private RedisMessagePublisher redisMessagePublisher;
@@ -28,13 +31,19 @@ public class PriceMonitorService {
     }
 
     public void checkPrice(String symbol) {
+        logger.info("Checking price for symbol: {}", symbol);
+
         double currentCryptoCoinPrice = binanceApiService.getCurrentBTCPrice(symbol);
         double lastStoredPrice = redisService.getLastStoredPrice(symbol);
+
+        logger.info("Last stored price: {}, current price: {}", lastStoredPrice, currentCryptoCoinPrice);
+
         String cryptoCoin = symbol.substring(0, symbol.length() - 4);
 
         if (lastStoredPrice > 0 && currentCryptoCoinPrice >= lastStoredPrice * 1.01) {
             String message = cryptoCoin + " price increased by 1%! New price: $" + currentCryptoCoinPrice;
-
+            logger.warn("Price increased more than 1%! Sending notification.");
+            logger.info("Publishing the message: {}", message);
             redisMessagePublisher.publish(message);
         }
         redisService.cacheCurrentPrice(symbol, currentCryptoCoinPrice);
