@@ -23,15 +23,23 @@ public class RedisService {
     }
 
     public void cacheCurrentPrice(String symbol, Double price) {
-        logger.debug("Cached current price in Redis for {}: {}", symbol, price);
-        String key = "price:" + symbol;
-        redisTemplate.opsForValue().set(key, String.valueOf(price));
+        try {
+            String key = "price:" + symbol;
+            redisTemplate.opsForValue().set(key, String.valueOf(price));
+            logger.debug("Cached current price in Redis for {}: {}", symbol, price);
+        } catch (Exception e) {
+            logger.error("Failed to cache current price for {}: {}", symbol, e.getMessage());
+        }
     }
 
     public void addPriceToHistory(String symbol, Double price) {
-        String key = "history:" + symbol;
-        redisTemplate.opsForList().leftPush(key, String.valueOf(price));
-        redisTemplate.opsForList().trim(key, 0, 9);
+        try {
+            String key = "history:" + symbol;
+            redisTemplate.opsForList().leftPush(key, String.valueOf(price));
+            redisTemplate.opsForList().trim(key, 0, 9);
+        } catch (Exception e) {
+            logger.error("Failed to store price history for {}: {}", symbol, e.getMessage());
+        }
     }
 
     public double getLastStoredPrice(String symbol) {

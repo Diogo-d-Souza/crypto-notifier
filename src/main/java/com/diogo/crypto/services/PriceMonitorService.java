@@ -34,6 +34,10 @@ public class PriceMonitorService {
         logger.info("Checking price for symbol: {}", symbol);
 
         double currentCryptoCoinPrice = binanceApiService.getCurrentBTCPrice(symbol);
+        if (currentCryptoCoinPrice <= 0) {
+            logger.warn("Skipping update due to invalid price for symbol {}", symbol);
+            return;
+        }
         double lastStoredPrice = redisService.getLastStoredPrice(symbol);
 
         logger.info("Last stored price: {}, current price: {}", lastStoredPrice, currentCryptoCoinPrice);
